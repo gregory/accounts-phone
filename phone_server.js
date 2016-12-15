@@ -270,21 +270,24 @@ Accounts.registerLoginHandler("phone", function (options) {
  * @param {String} userId The id of the user to update.
  * @param {String} newPassword A new password for the user.
  */
-Accounts.setPhonePassword = function (userId, newPlaintextPassword) {
+Accounts.setPhonePassword = function (userId, newPlaintextPassword, options) {
+    var defaultOptions = { logout: true }
+    var options = _.defaults((options || {}), defaultOptions)
     var user = Meteor.users.findOne(userId);
     if (!user)
         throw new Meteor.Error(403, "User not found");
 
-    Meteor.users.update(
-        {_id: user._id},
-        {
-            $unset: {
-                'services.phone.srp'         : 1, // XXX COMPAT WITH 0.8.1.3
-                'services.phone.verify'      : 1,
-                'services.resume.loginTokens': 1
-            },
-            $set  : {'services.phone.bcrypt': hashPassword(newPlaintextPassword)} }
-    );
+    var payload = {
+        $set  : {'services.phone.bcrypt': hashPassword(newPlaintextPassword)}
+    };
+    if(options.logout) {
+        payload['$unset'] = {
+            'services.phone.srp'         : 1, // XXX COMPAT WITH 0.8.1.3
+            'services.phone.verify'      : 1,
+            'services.resume.loginTokens': 1
+        };
+    }
+    Meteor.users.update({_id: user._id}, payload);
 };
 
 ///
